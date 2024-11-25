@@ -71,6 +71,7 @@ niche_limits <- future_map_dfr(
 log_info("Thermal limit computation complete.")
 
 # 4. Calculate exposure
+plan("multisession", workers = availableCores() - 1)
 log_info("Calculating exposure for each species.")
 exposure_list <- future_map(
   1:length(primates_range_data),
