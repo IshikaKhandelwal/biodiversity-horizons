@@ -30,28 +30,28 @@ log_info("Future climate data has {nrow(future_climate)} rows.")
 log_info("Grid data contains {nrow(grid)} rows.")
 log_info("Primates shapefile contains {nrow(primates_shp)} rows.")
 
-# Source the functions from the /R directory
-log_info("Loading functions...")
-source("R/prepare_range.R")
-source("R/extract_climate_data.R")
-source("R/get_niche_limits.R")
-source("R/exposure.R")
-source("R/exposure_times.R")
-log_info("Functions loaded successfully.")
+# Load all functions from the package
+log_info("Loading package functions...")
+devtools::load_all()
+log_info("Package functions loaded successfully.")
 
 # 1. Transform the distribution polygons to match the grid
 log_info("Transforming distribution polygons to match the grid.")
 primates_range_data <- prepare_range(primates_shp, grid)
-log_info("Transformation complete. Processed {length(primates_range_data)} species.")
+log_info("Processed {length(primates_range_data)} species.")
 
 # 2. Extract climate data using the grid
 log_info("Extracting historical climate data...")
 historical_climate_df <- extract_climate_data(historical_climate, grid)
-log_info("Historical climate data extraction complete. Dataframe contains {nrow(historical_climate_df)} rows.")
+log_info(
+  "Historical climate extraction complete: {nrow(historical_climate_df)} rows."
+)
 
 log_info("Extracting future climate data...")
 future_climate_df <- extract_climate_data(future_climate, grid)
-log_info("Future climate data extraction complete. Dataframe contains {nrow(future_climate_df)} rows.")
+log_info(
+  "Future climate extraction complete: {nrow(future_climate_df)} rows."
+)
 
 # Rename columns
 log_info("Renaming columns for climate data.")
@@ -62,13 +62,21 @@ log_info("Column renaming complete.")
 # 3. Compute the thermal limits for each species
 log_info("Computing thermal limits for each species.")
 plan("multisession", workers = availableCores() - 1)
-niche_limits <- future_map_dfr(primates_range_data, ~ get_niche_limits(.x, historical_climate_df),
-                               .id = "species", .progress = TRUE)
+niche_limits <- future_map_dfr(
+  primates_range_data,
+  ~ get_niche_limits(.x, historical_climate_df),
+  .id = "species",
+  .progress = TRUE
+)
 log_info("Thermal limit computation complete.")
 
 # 4. Calculate exposure
 log_info("Calculating exposure for each species.")
-exposure_list <- future_map(1:length(primates_range_data), ~ exposure(.x, primates_range_data, future_climate_df, niche_limits), .progress = TRUE) # nolint
+exposure_list <- future_map(
+  1:length(primates_range_data),
+  ~ exposure(.x, primates_range_data, future_climate_df, niche_limits),
+  .progress = TRUE
+)
 names(exposure_list) <- names(primates_range_data)
 log_info("Exposure calculation complete.")
 
@@ -77,7 +85,7 @@ log_info("Calculating exposure times.")
 exposure_df <- exposure_list %>%
   bind_rows() %>%
   mutate(sum = rowSums(select(., starts_with("2")))) %>%
-  filter(sum < 82) %>%  # Select only cells with less than 82 suitable years
+  filter(sum < 82) %>%  # Select only cells with < 82 suitable years
   select(-sum)
 
 cl <- makeCluster(availableCores() - 1)
@@ -88,7 +96,13 @@ clusterExport(cl, "exposure_times")
 res_final <- pbapply(
   X = exposure_df,
   MARGIN = 1,
-  FUN = function(x) exposure_times(data = x, original_state = 1, consecutive_elements = 5),
+  FUN = function(x) {
+    exposure_times(
+      data = x,
+      original_state = 1,
+      consecutive_elements = 5
+    )
+  },
   cl = cl
 )
 
