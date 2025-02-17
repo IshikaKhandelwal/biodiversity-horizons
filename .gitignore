@@ -145,3 +145,4 @@ version.py
 *.egg-info
 
 outputs/
+*.DS_Store
