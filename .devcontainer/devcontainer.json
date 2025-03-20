@@ -1,0 +1,26 @@
+{
+    "name": "biodiversity-horizons-dev",
+    "build": {
+      "dockerfile": "../Dockerfile",
+      "context": ".."
+    },
+    "customizations": {
+      "vscode": {
+        "extensions": [
+          "ms-toolsai.jupyter",
+          "ms-python.python",
+          "REditorSupport.r"
+        ],
+        "settings": {
+          "terminal.integrated.defaultProfile.linux": "bash"
+        }
+      }
+    },
+    "hostRequirements": {
+      "cpus": 4,
+      "memory": "16gb",
+      "storage": "32gb"
+    },
+    "postCreateCommand": "sh .devcontainer/postBuild.sh"
+  }
+  
